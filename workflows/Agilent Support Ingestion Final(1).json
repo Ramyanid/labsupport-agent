@@ -1,0 +1,359 @@
+{
+  "name": "Agilent Support Ingestion Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        400
+      ],
+      "id": "1dcbfc60-0af6-457e-ac8b-47592809318e",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2064,
+        400
+      ],
+      "id": "7273487d-2c13-4371-b757-4fa1a157153a",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "page_title",
+              "cssSelector": "h1"
+            },
+            {
+              "key": "page_content",
+              "cssSelector": ".content.full.without-author"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        2288,
+        400
+      ],
+      "id": "ddc655b2-f6be-4d5b-acdd-bd83cb636f34",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text       = $input.first().json.page_content || \"\";\nconst loopItem   = $('Loop Over URLs').first().json;\nconst url        = loopItem.url || \"\";\nconst namespace  = loopItem.namespace || \"\";\nconst instrument = loopItem.instrument || \"\";\nconst title      = $input.first().json.page_title || instrument;\n\nconst chunks     = [];\nconst CHUNK_SIZE = 600;\nconst OVERLAP    = 80;\n\nlet i = 0;\nlet chunkIndex = 0;\n\nwhile (i < text.length) {\n  const chunk = text.slice(i, i + CHUNK_SIZE).trim();\n  if (chunk.length >= 120) {\n    chunks.push({\n  json: {\n    // Stable ID = hash of url + chunk position → upsert overwrites on re-run\n    id: `${namespace}__${url.replace(/[^a-z0-9]/gi, '_').slice(-60)}__${chunkIndex}`,\n    pagecontent: chunk,\n    metadata: {\n          source_url:  url,\n          instrument:  instrument,\n          namespace:   namespace,\n          title:       title,\n          doc_type:    \"support_wiki\",\n          chunk_index: chunkIndex\n        }\n      }\n    });\n    chunkIndex++;\n  }\n  i += (CHUNK_SIZE - OVERLAP);\n}\n\nreturn chunks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        400
+      ],
+      "id": "8f7b7ba4-06eb-4a4d-9ef0-6b0315192b77",
+      "name": "Chunk Text"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "agilent-support-agent",
+          "mode": "list"
+        },
+        "options": {
+          "clearNamespace": true,
+          "pineconeNamespace": "={{ $json.metadata.namespace }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        2944,
+        480
+      ],
+      "id": "9173e9a4-1fc3-4248-8384-0af156383191",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "kAQo3tXhLV9lPcOM",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "return [\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/lc/w/wiki/4916/collection-of-lc-hplc-resources\", \"namespace\": \"lc\", \"instrument\": \"HPLC/LC\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/gc/w/wiki/4917/collection-of-agilent-gc-resources-home\", \"namespace\": \"gc\", \"instrument\": \"Gas Chromatography\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/consumables/w/wiki/4953/agilent-collection-of-columns-supplies-and-standards-resources\", \"namespace\": \"consumables\", \"instrument\": \"Columns and Consumables\"}}\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        400
+      ],
+      "id": "18a2da4f-58c6-422e-a1e5-80e5dcea92bc",
+      "name": "Code in Python1"
+    },
+    {
+      "parameters": {},
+      "id": "5097f3ff-374b-42f1-82c1-ece033c183bc",
+      "name": "Loop Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "aa8ad802-a8c0-4917-9497-835b1f37c31d",
+      "name": "Loop Over URLs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1840,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1392,
+        128
+      ],
+      "id": "f99caf66-2c29-4a2f-bfc1-e5f9c16469e6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2912,
+        704
+      ],
+      "id": "2a08946e-9e4a-444f-8f64-1bdf45480962",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "418azV3p8e3HXr1o",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.pagecontent }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "source_url",
+                "value": "={{ $json.metadata.source_url }}"
+              },
+              {
+                "name": "instrument",
+                "value": "={{ $json.metadata.instrument }}"
+              },
+              {
+                "name": "namespace",
+                "value": "={{ $json.metadata.namespace }}"
+              },
+              {
+                "name": "title",
+                "value": "={{ $json.metadata.title }}"
+              },
+              {
+                "name": "doc_type",
+                "value": "={{ $json.metadata.doc_type }}"
+              },
+              {
+                "name": "chunk_index",
+                "value": "={{ $json.metadata.chunk_index }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        3088,
+        688
+      ],
+      "id": "2160a5d1-33b4-4330-b2d3-c53196130d34",
+      "name": "Default Data Loader"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Code in Python1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Text": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Over URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over URLs": {
+      "main": [
+        [
+          {
+            "node": "Loop Done",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code in Python1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f978435b-3460-47e5-815f-9a9326b38c23",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "01fcb9fb97b3ebf0dede6f97c5fc33f2cdd542e39d684f6789db85e728189967"
+  },
+  "id": "GwXf79BPAelcIGAS",
+  "tags": []
+}
