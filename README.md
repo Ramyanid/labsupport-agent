@@ -98,6 +98,23 @@ Namespace routing accuracy (`namespace_ok`): **14/15 (93.3%)**
 
 Full per-query queries, expected behavior, agent answers, and judge reasoning are in [`eval/Evaldataset-week2.xlsx`](eval/Evaldataset-week2.xlsx).
 
+## Potential Enhancements
+
+**Hybrid search**
+- Replace the regex-based "Query Enricher" with a real sparse+dense hybrid Pinecone index (BM25/SPLADE) for reliable exact-match retrieval on model numbers and part codes.
+- Use detected model/product names as Pinecone metadata filters alongside semantic search, instead of relying on text-stuffing the query.
+- Add a re-ranking step (e.g., Cohere rerank / cross-encoder) on retrieved chunks before passing them to the agent, especially for cross-namespace queries.
+
+**Evaluation strategy**
+- Expand the eval set beyond 15 queries (50-100+ per category) for statistically meaningful pass rates.
+- Add retrieval-level metrics (recall@k, MRR) separate from end-to-end answer grading, to isolate retrieval failures from generation failures.
+- Add prompt rules for clarifying questions on ambiguous queries (currently the weakest category at 50%), then re-run the eval to confirm improvement, and track scores run-over-run to catch regressions.
+
+**Other enhancements**
+- Re-enable conversation memory and test multi-turn follow-up questions.
+- Add confidence-based escalation to a human rep when retrieval scores are low.
+- Expand the knowledge base beyond the 3 wiki pages (PDF manuals, resolved support tickets) with scheduled incremental re-ingestion.
+
 ## Requirements
 
 - An [n8n](https://n8n.io/) instance (self-hosted or cloud) with the LangChain nodes (`@n8n/n8n-nodes-langchain`) enabled
