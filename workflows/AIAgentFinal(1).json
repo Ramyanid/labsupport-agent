@@ -9,7 +9,7 @@
       "typeVersion": 1.4,
       "position": [
         -784,
-        256
+        0
       ],
       "id": "3e702c23-2808-4096-8bf3-e2fde1bda7e2",
       "name": "When chat message received",
@@ -17,13 +17,13 @@
     },
     {
       "parameters": {
-        "jsCode": "// Detect instrument model numbers in the user query\n// and append them so Pinecone semantic search boosts\n// chunks where those tokens appear in the text\n\nconst input = $input.first().json;\nconst query = input.chatInput || input.text || input.message || '';\n\nconst patterns = [\n  /\\b(1[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(7[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(6[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(8[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(ZORBAX[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(Poroshell[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(InfinityLab[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(Infinity\\s?II?)\\b/gi,\n  /\\b(MassHunter)\\b/gi,\n  /\\b(OpenLAB)\\b/gi,\n  /\\b(ChemStation)\\b/gi,\n  /\\b(TripleQuad[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(QTOF[\\s\\-]?[\\w]*)\\b/gi\n];\n\nconst found = new Set();\nfor (const p of patterns) {\n  for (const m of query.matchAll(p)) {\n    const val = m[1].trim().toUpperCase().replace(/\\s+/g, '_');\n    if (val.length >= 3) found.add(val);\n  }\n}\n\nconst detected = Array.from(found);\n\n// Append detected tokens to query so embedding search\n// naturally scores higher on chunks containing them\nconst enrichedQuery = detected.length > 0\n  ? query + ' ' + detected.join(' ')\n  : query;\n\n// Pass all original fields through unchanged, plus enriched query\nreturn [{\n  json: {\n    ...input,\n    chatInput: enrichedQuery,\n    detectedInstruments: detected\n  }\n}];"
+        "jsCode": "// Detect instrument model numbers in each query and append them so\n// Pinecone semantic search boosts chunks where those tokens appear.\n// Processes ALL input items (one per dataset row).\n\nconst patterns = [\n  /\\b(1[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(7[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(6[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(8[0-9]{3}[A-Z]?)\\b/g,\n  /\\b(ZORBAX[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(Poroshell[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(InfinityLab[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(Infinity\\s?II?)\\b/gi,\n  /\\b(MassHunter)\\b/gi,\n  /\\b(OpenLAB)\\b/gi,\n  /\\b(ChemStation)\\b/gi,\n  /\\b(TripleQuad[\\s\\-]?[\\w]*)\\b/gi,\n  /\\b(QTOF[\\s\\-]?[\\w]*)\\b/gi\n];\n\nconst out = [];\nfor (const item of $input.all()) {\n  const input = item.json;\n  const query = input.chatInput || input.Query || input.text || input.message || '';\n\n  const found = new Set();\n  for (const p of patterns) {\n    for (const m of query.matchAll(p)) {\n      const val = m[1].trim().toUpperCase().replace(/\\s+/g, '_');\n      if (val.length >= 3) found.add(val);\n    }\n  }\n  const detected = Array.from(found);\n  const enrichedQuery = detected.length > 0 ? query + ' ' + detected.join(' ') : query;\n\n  out.push({\n    json: {\n      ...input,\n      chatInput: enrichedQuery,\n      detectedInstruments: detected\n    }\n  });\n}\n\nreturn out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -576,
-        256
+        -560,
+        0
       ],
       "id": "47ed4722-6d89-4366-bd86-f5076c5b102a",
       "name": "Query Enricher"
@@ -37,8 +37,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        -352,
-        256
+        -64,
+        0
       ],
       "id": "d432afdd-b4ed-49c3-ade8-e9386d3c964d",
       "name": "AI Agent"
@@ -47,9 +47,9 @@
       "parameters": {
         "model": {
           "__rl": true,
-          "value": "o4-mini",
+          "value": "gpt-4o-mini",
           "mode": "list",
-          "cachedResultName": "o4-mini"
+          "cachedResultName": "gpt-4o-mini"
         },
         "builtInTools": {},
         "options": {}
@@ -57,8 +57,8 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.3,
       "position": [
-        -496,
-        464
+        -336,
+        224
       ],
       "id": "ec5363df-344d-48cc-8235-d4b639c2bd61",
       "name": "OpenAI Chat Model",
@@ -71,17 +71,19 @@
     },
     {
       "parameters": {
-        "sessionKey": "sessionId",
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When chat message received').isExecuted ? $('When chat message received').item.json.sessionId : ($('When fetching a dataset row').isExecuted ? $('When fetching a dataset row').item.json.id : 'eval') }}",
         "contextWindowLength": 10
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        -352,
-        464
+        -208,
+        224
       ],
       "id": "e280dbcc-0fa5-40bb-90ba-21a857411698",
-      "name": "Window Buffer Memory"
+      "name": "Window Buffer Memory",
+      "disabled": true
     },
     {
       "parameters": {
@@ -100,8 +102,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        48,
-        336
+        -80,
+        224
       ],
       "id": "c5ddd695-8051-4fb5-a918-cc39fc386da7",
       "name": "Pinecone Vector Store",
@@ -119,8 +121,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        208,
-        448
+        0,
+        432
       ],
       "id": "80d72f7f-c6a3-46ac-9a9c-b5bd66c5c94d",
       "name": "Embeddings OpenAI",
@@ -148,8 +150,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        0,
-        0
+        208,
+        224
       ],
       "id": "d0ec5e7a-ae21-44f8-8aad-0505212f7083",
       "name": "Pinecone Vector Store1",
@@ -177,8 +179,8 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        -64,
-        640
+        496,
+        224
       ],
       "id": "8a463266-0656-4f86-a8a4-fbfcd25fae96",
       "name": "Pinecone Vector Store2",
@@ -196,8 +198,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        48,
-        768
+        576,
+        432
       ],
       "id": "9aaf89af-7b58-4888-afbd-d7d2a5ea6694",
       "name": "Embeddings OpenAI1",
@@ -215,8 +217,8 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        96,
-        128
+        288,
+        432
       ],
       "id": "d597f086-e695-439b-a536-41d09ca8240b",
       "name": "Embeddings OpenAI2",
@@ -226,21 +228,299 @@
           "name": "OpenAI account"
         }
       }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a strict evaluator for an Agilent technical-support RAG agent. You are given a user QUERY, the agent's ANSWER, and a rubric (EXPECTED_BEHAVIOR, EXPECTED_NAMESPACE). Grade how well the answer satisfies the rubric.\n\nVERDICT rules:\n- PASS: answer fully satisfies expected_behavior. For Out-of-KB rows (expected_namespace = none), PASS means the answer returns the KB-fallback message and does NOT invent facts.\n- PARTIAL: answer is on-topic and partially satisfies the rubric but is incomplete, missing synthesis across sources, missing a citation, or only partially routed.\n- FAIL: answer is wrong, hallucinated, off-topic, or (for Out-of-KB) fabricates an answer instead of returning the fallback.\n\nReturn ONLY valid JSON, no prose, no markdown fences:\n{\"verdict\":\"PASS|PARTIAL|FAIL\",\"namespace_ok\":true|false,\"reason\":\"one sentence\"}"
+            },
+            {
+              "content": "=QUERY:\n{{ $json.Query }}\n\nEXPECTED_NAMESPACE: {{ $json.Expected_namespace }}\nEXPECTED_BEHAVIOR: {{ $json.Expected_behavior }}\n\nAGENT ANSWER:\n{{ $json.output }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          },
+          "temperature": 0
+        }
+      },
+      "id": "49b403c3-e4f9-46a4-872c-399735224479",
+      "name": "LLM Judge",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        320,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "418azV3p8e3HXr1o",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Read verdict from LLM Judge input; pull dataset row + answer from\n// 'Tag Answer' by index (Tag Answer is in this node's lineage and carries\n// id/Query/Category/Expected_namespace/output for each row, in order).\n\nfunction extractParsed(obj) {\n  if (obj == null) return null;\n  if (Array.isArray(obj.output) && obj.output[0] && Array.isArray(obj.output[0].content)) {\n    const t = obj.output[0].content[0] && obj.output[0].content[0].text;\n    if (t && typeof t === 'object') return t;\n    if (typeof t === 'string') {\n      try { return JSON.parse(t.replace(/```json|```/g, '').trim()); } catch (e) {}\n    }\n  }\n  if (typeof obj.verdict === 'string') return obj;\n  const candidates = [obj.output, obj.text, obj.content, obj.response,\n                      obj.message && obj.message.content];\n  for (const c of candidates) {\n    if (c && typeof c === 'object' && typeof c.verdict === 'string') return c;\n    if (typeof c === 'string') {\n      try {\n        const p = JSON.parse(c.replace(/```json|```/g, '').trim());\n        if (p && p.verdict) return p;\n      } catch (e) {}\n    }\n  }\n  return null;\n}\n\nconst scoreMap = { PASS: 1, PARTIAL: 0.5, FAIL: 0 };\nconst results = [];\nconst items = $input.all();\nconst tagged = $('Tag Answer').all();\n\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json;\n\n  let parsed = extractParsed(j);\n  if (!parsed) {\n    parsed = { verdict: 'FAIL', namespace_ok: false,\n               reason: 'UNPARSEABLE_RAW: ' + JSON.stringify(j).slice(0, 300) };\n  }\n\n  const verdict = String(parsed.verdict || 'FAIL').toUpperCase();\n  const score = scoreMap[verdict] ?? 0;\n  const namespaceOk = parsed.namespace_ok === true || parsed.namespace_ok === 'true';\n\n  const row = tagged[i] ? tagged[i].json : {};\n\n  results.push({\n    json: {\n      id: row.id || '',\n      query: row.Query || '',\n      category: row.Category || '',\n      expected_namespace: row.Expected_namespace || '',\n      verdict: verdict,\n      score: score,\n      namespace_ok: namespaceOk,\n      reason: parsed.reason || '',\n      answer: row.output || '',\n      timestamp: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "69063c36-9d19-4cc6-8d45-35ec2c0ceb45",
+      "name": "Score Mapper",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "7d70d5bd-4de3-4edf-96aa-b697dc4d3f6b",
+      "name": "Run All Rows",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "cachedResultName": "Evaldataset-week2",
+          "mode": "list",
+          "value": "1DwLu7ai1AnxVnTQHQL526gqrSZEoVchOWDZFrZTqelg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "cachedResultName": "evaldataset",
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "options": {}
+      },
+      "id": "4c830857-acc4-4978-8ee6-4fa525cb2be7",
+      "name": "Read Dataset",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1040,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wDCRktt5qfMETU0H",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "cachedResultName": "Evaldataset-week2",
+          "mode": "list",
+          "value": "1DwLu7ai1AnxVnTQHQL526gqrSZEoVchOWDZFrZTqelg"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "evaldataset",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1DwLu7ai1AnxVnTQHQL526gqrSZEoVchOWDZFrZTqelg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Query",
+              "displayName": "Query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expected_namespace",
+              "displayName": "Expected_namespace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Expected_behavior",
+              "displayName": "Expected_behavior",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "verdict",
+              "displayName": "verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score",
+              "displayName": "score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "namespace_ok",
+              "displayName": "namespace_ok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "answer",
+              "displayName": "answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "expected_namespace",
+              "displayName": "expected_namespace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "718c5157-54b1-47f5-922a-458d4312b5aa",
+      "name": "Append Results",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        -224
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wDCRktt5qfMETU0H",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Runs once per item. $json is the agent output for THIS item.\n// $('Query Enricher').item gives the paired dataset row (enricher is in\n// the agent's per-item lineage, so this alignment is exact).\n\nconst answer = $json.output || $json.text || '';\nconst row = $('Query Enricher').item.json;\n\nreturn {\n  json: {\n    id: row.id,\n    Query: row.Query,\n    Category: row.Category,\n    Expected_namespace: row.Expected_namespace,\n    Expected_behavior: row.Expected_behavior,\n    output: answer\n  }\n};"
+      },
+      "id": "53815fde-c1b2-4bc6-85f5-dc30f2a5bd0d",
+      "name": "Tag Answer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        0
+      ]
     }
   ],
   "pinData": {},
   "connections": {
-    "When chat message received": {
-      "main": [
-        [
-          {
-            "node": "Query Enricher",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Query Enricher": {
       "main": [
         [
@@ -258,17 +538,6 @@
           {
             "node": "AI Agent",
             "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Window Buffer Memory": {
-      "ai_memory": [
-        [
-          {
-            "node": "AI Agent",
-            "type": "ai_memory",
             "index": 0
           }
         ]
@@ -339,16 +608,87 @@
           }
         ]
       ]
+    },
+    "LLM Judge": {
+      "main": [
+        [
+          {
+            "node": "Score Mapper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Mapper": {
+      "main": [
+        [
+          {
+            "node": "Append Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run All Rows": {
+      "main": [
+        [
+          {
+            "node": "Read Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Dataset": {
+      "main": [
+        [
+          {
+            "node": "Query Enricher",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Tag Answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tag Answer": {
+      "main": [
+        [
+          {
+            "node": "LLM Judge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
   },
-  "versionId": "2ee1e7f5-93b9-47a4-8a43-e20bfcc09e88",
+  "versionId": "03f28111-3102-4d52-96cd-18bcb0819f75",
   "meta": {
     "templateCredsSetupCompleted": true,
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
     "instanceId": "01fcb9fb97b3ebf0dede6f97c5fc33f2cdd542e39d684f6789db85e728189967"
   },
   "id": "Cf3hwsKd9BfV3nwQ",

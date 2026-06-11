@@ -6,10 +6,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        1392,
-        400
+        -672,
+        192
       ],
-      "id": "1dcbfc60-0af6-457e-ac8b-47592809318e",
+      "id": "dbed56eb-0f28-42e0-8a62-0e2f7982582e",
       "name": "When clicking 'Execute workflow'"
     },
     {
@@ -29,10 +29,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        2064,
-        400
+        0,
+        192
       ],
-      "id": "7273487d-2c13-4371-b757-4fa1a157153a",
+      "id": "4d5b74a2-fa33-4685-bd5e-080062e0d1ca",
       "name": "HTTP Request"
     },
     {
@@ -55,23 +55,23 @@
       "type": "n8n-nodes-base.html",
       "typeVersion": 1.2,
       "position": [
-        2288,
-        400
+        224,
+        192
       ],
-      "id": "ddc655b2-f6be-4d5b-acdd-bd83cb636f34",
+      "id": "cb516d11-0d71-420a-b7f6-b8e0c06d5cde",
       "name": "HTML"
     },
     {
       "parameters": {
-        "jsCode": "const text       = $input.first().json.page_content || \"\";\nconst loopItem   = $('Loop Over URLs').first().json;\nconst url        = loopItem.url || \"\";\nconst namespace  = loopItem.namespace || \"\";\nconst instrument = loopItem.instrument || \"\";\nconst title      = $input.first().json.page_title || instrument;\n\nconst chunks     = [];\nconst CHUNK_SIZE = 600;\nconst OVERLAP    = 80;\n\nlet i = 0;\nlet chunkIndex = 0;\n\nwhile (i < text.length) {\n  const chunk = text.slice(i, i + CHUNK_SIZE).trim();\n  if (chunk.length >= 120) {\n    chunks.push({\n  json: {\n    // Stable ID = hash of url + chunk position → upsert overwrites on re-run\n    id: `${namespace}__${url.replace(/[^a-z0-9]/gi, '_').slice(-60)}__${chunkIndex}`,\n    pagecontent: chunk,\n    metadata: {\n          source_url:  url,\n          instrument:  instrument,\n          namespace:   namespace,\n          title:       title,\n          doc_type:    \"support_wiki\",\n          chunk_index: chunkIndex\n        }\n      }\n    });\n    chunkIndex++;\n  }\n  i += (CHUNK_SIZE - OVERLAP);\n}\n\nreturn chunks;"
+        "jsCode": "const text       = $input.first().json.page_content || \"\";\nconst loopItem   = $('Loop Over URLs').first().json;\nconst url        = loopItem.url || \"\";\nconst namespace  = loopItem.namespace || \"\";\nconst instrument = loopItem.instrument || \"\";\nconst title      = $input.first().json.page_title || instrument;\n\nconst chunks     = [];\nconst CHUNK_SIZE = 600;\nconst OVERLAP    = 80;\n\nlet i = 0;\nlet chunkIndex = 0;\n\nwhile (i < text.length) {\n  const chunk = text.slice(i, i + CHUNK_SIZE).trim();\n  if (chunk.length >= 120) {\n    chunks.push({\n      json: {\n        chunk_text: chunk,\n        metadata: {\n          source_url:  url,\n          instrument:  instrument,\n          namespace:   namespace,\n          title:       title,\n          doc_type:    \"support_wiki\",\n          chunk_index: chunkIndex\n        }\n      }\n    });\n    chunkIndex++;\n  }\n  i += (CHUNK_SIZE - OVERLAP);\n}\n\nreturn chunks;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2512,
-        400
+        448,
+        192
       ],
-      "id": "8f7b7ba4-06eb-4a4d-9ef0-6b0315192b77",
+      "id": "fd3ff57c-74dc-45f3-95ad-efafd1e69f07",
       "name": "Chunk Text"
     },
     {
@@ -83,82 +83,23 @@
           "mode": "list"
         },
         "options": {
-          "clearNamespace": true,
           "pineconeNamespace": "={{ $json.metadata.namespace }}"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        2944,
-        480
+        672,
+        272
       ],
-      "id": "9173e9a4-1fc3-4248-8384-0af156383191",
+      "id": "7395e1c7-501d-4089-8767-50ddd8bc812b",
       "name": "Pinecone Vector Store",
       "credentials": {
         "pineconeApi": {
-          "id": "kAQo3tXhLV9lPcOM",
-          "name": "Pinecone account"
+          "id": "YNYqQyhpB6ATiUt6",
+          "name": "Pinecone account 2"
         }
       }
-    },
-    {
-      "parameters": {
-        "language": "pythonNative",
-        "pythonCode": "return [\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/lc/w/wiki/4916/collection-of-lc-hplc-resources\", \"namespace\": \"lc\", \"instrument\": \"HPLC/LC\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/gc/w/wiki/4917/collection-of-agilent-gc-resources-home\", \"namespace\": \"gc\", \"instrument\": \"Gas Chromatography\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/consumables/w/wiki/4953/agilent-collection-of-columns-supplies-and-standards-resources\", \"namespace\": \"consumables\", \"instrument\": \"Columns and Consumables\"}}\n]"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1616,
-        400
-      ],
-      "id": "18a2da4f-58c6-422e-a1e5-80e5dcea92bc",
-      "name": "Code in Python1"
-    },
-    {
-      "parameters": {},
-      "id": "5097f3ff-374b-42f1-82c1-ece033c183bc",
-      "name": "Loop Done",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        2064,
-        208
-      ]
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "id": "aa8ad802-a8c0-4917-9497-835b1f37c31d",
-      "name": "Loop Over URLs",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [
-        1840,
-        400
-      ]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "interval": [
-            {
-              "field": "weeks",
-              "triggerAtHour": 2
-            }
-          ]
-        }
-      },
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.3,
-      "position": [
-        1392,
-        128
-      ],
-      "id": "f99caf66-2c29-4a2f-bfc1-e5f9c16469e6",
-      "name": "Schedule Trigger"
     },
     {
       "parameters": {
@@ -167,22 +108,20 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        2912,
-        704
+        688,
+        496
       ],
-      "id": "2a08946e-9e4a-444f-8f64-1bdf45480962",
+      "id": "9393544a-2f37-4045-9e33-207fd7389455",
       "name": "Embeddings OpenAI",
       "credentials": {
         "openAiApi": {
-          "id": "418azV3p8e3HXr1o",
-          "name": "OpenAI account"
+          "id": "2yigTNurW3BezLQu",
+          "name": "OpenAI account 2"
         }
       }
     },
     {
       "parameters": {
-        "jsonMode": "expressionData",
-        "jsonData": "={{ $json.pagecontent }}",
         "options": {
           "metadata": {
             "metadataValues": [
@@ -217,11 +156,49 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        3088,
-        688
+        848,
+        496
       ],
-      "id": "2160a5d1-33b4-4330-b2d3-c53196130d34",
+      "id": "2813f4af-8cc4-4042-892f-cffd00dc9d43",
       "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "return [\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/lc/w/wiki/4916/collection-of-lc-hplc-resources\", \"namespace\": \"lc\", \"instrument\": \"HPLC/LC\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/gc/w/wiki/4917/collection-of-agilent-gc-resources-home\", \"namespace\": \"gc\", \"instrument\": \"Gas Chromatography\"}},\n  {\"json\": {\"url\": \"https://community.agilent.com/technical/consumables/w/wiki/4953/agilent-collection-of-columns-supplies-and-standards-resources\", \"namespace\": \"consumables\", \"instrument\": \"Columns and Consumables\"}}\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        192
+      ],
+      "id": "75508647-dfaa-4333-99f1-fd955bea7835",
+      "name": "Code in Python1"
+    },
+    {
+      "parameters": {},
+      "id": "eaebe460-1ab5-435a-b6ef-0a5861bf936f",
+      "name": "Loop Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "139ee9f4-0b7c-499d-9f2a-c41f42fa3133",
+      "name": "Loop Over URLs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -224,
+        192
+      ]
     }
   ],
   "pinData": {},
@@ -270,6 +247,28 @@
         ]
       ]
     },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Code in Python1": {
       "main": [
         [
@@ -309,39 +308,6 @@
           }
         ]
       ]
-    },
-    "Schedule Trigger": {
-      "main": [
-        [
-          {
-            "node": "Code in Python1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Embeddings OpenAI": {
-      "ai_embedding": [
-        [
-          {
-            "node": "Pinecone Vector Store",
-            "type": "ai_embedding",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Default Data Loader": {
-      "ai_document": [
-        [
-          {
-            "node": "Pinecone Vector Store",
-            "type": "ai_document",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
@@ -349,11 +315,11 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "f978435b-3460-47e5-815f-9a9326b38c23",
+  "versionId": "3dae701c-b179-4f20-a1e6-282db4e790de",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "01fcb9fb97b3ebf0dede6f97c5fc33f2cdd542e39d684f6789db85e728189967"
   },
-  "id": "GwXf79BPAelcIGAS",
+  "id": "UVBeqx1i488KKu2F",
   "tags": []
 }
