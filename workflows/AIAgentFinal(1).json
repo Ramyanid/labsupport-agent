@@ -31,7 +31,7 @@
     {
       "parameters": {
         "options": {
-          "systemMessage": "You are a helpful Agilent Technologies support assistant.\nAnswer questions about LC/HPLC, GC, and consumables using the knowledge base tools provided.\n\nRULES:\n1. ALWAYS call a search tool before answering. Never answer from memory alone.\n2. Route by topic:\n   - LC / HPLC / pump / autosampler / detector → use Pinecone Vector Store (lc)\n   - GC / gas chromatography / inlet / oven → use Pinecone Vector Store1 (gc)\n   - Columns / consumables / ZORBAX / Poroshell / supplies → use Pinecone Vector Store2 (consumables)\n   - Unsure → search all three\n3. If the user mentioned a specific model number (e.g. 1260, 7890B, ZORBAX), include it verbatim in your search query.\n4. Always end your answer with: Source: [title] — [source_url]\n5. If the answer is not in the knowledge base say: \"I could not find that in the Agilent knowledge base. Please visit https://community.agilent.com or contact Agilent support.\""
+          "systemMessage": "You are a helpful customer support assistant for a medical device company specializing in liquid chromatography (LC/HPLC), gas chromatography (GC), and lab consumables.\nAnswer questions about LC/HPLC, GC, and consumables using the knowledge base tools provided.\n\nRULES:\n1. ALWAYS call a search tool before answering. Never answer from memory alone.\n2. Route by topic:\n   - LC / HPLC / pump / autosampler / detector → use Pinecone Vector Store (lc)\n   - GC / gas chromatography / inlet / oven → use Pinecone Vector Store1 (gc)\n   - Columns / consumables / ZORBAX / Poroshell / supplies → use Pinecone Vector Store2 (consumables)\n   - Unsure → search all three\n3. If the user mentioned a specific model number (e.g. 1260, 7890B, ZORBAX), include it verbatim in your search query.\n4. Always end your answer with: Source: [title] — [source_url]\n5. If the answer is not in the knowledge base say: \"I could not find that in the support knowledge base. Please contact support for further assistance.\""
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -88,7 +88,7 @@
     {
       "parameters": {
         "mode": "retrieve-as-tool",
-        "toolDescription": "Search Agilent LC/HPLC support knowledge base. Use for liquid chromatography, HPLC, pumps, autosamplers, detectors, LC troubleshooting. Models: 1100, 1120, 1200, 1220, 1260, 1290 series. Include model number verbatim in query if mentioned.",
+        "toolDescription": "Search the LC/HPLC support knowledge base. Use for liquid chromatography, HPLC, pumps, autosamplers, detectors, LC troubleshooting. Models: 1100, 1120, 1200, 1220, 1260, 1290 series. Include model number verbatim in query if mentioned.",
         "pineconeIndex": {
           "__rl": true,
           "value": "agilent-support-agent",
@@ -136,7 +136,7 @@
     {
       "parameters": {
         "mode": "retrieve-as-tool",
-        "toolDescription": "Search Agilent GC support knowledge base. Use for gas chromatography, GC systems, inlets, detectors, columns, headspace, GC troubleshooting. Models: 7820A, 7890A, 7890B, 8860 series. Include model number verbatim in query if mentioned.",
+        "toolDescription": "Search the GC support knowledge base. Use for gas chromatography, GC systems, inlets, detectors, columns, headspace, GC troubleshooting. Models: 7820A, 7890A, 7890B, 8860 series. Include model number verbatim in query if mentioned.",
         "pineconeIndex": {
           "__rl": true,
           "value": "agilent-support-agent",
@@ -165,7 +165,7 @@
     {
       "parameters": {
         "mode": "retrieve-as-tool",
-        "toolDescription": "Search Agilent consumables knowledge base. Use for columns, supplies, standards, sample prep, vials, filters. Products: ZORBAX, Poroshell, InfinityLab, Eclipse, Bond Elut. Include product name verbatim in query if mentioned.",
+        "toolDescription": "Search the consumables support knowledge base. Use for columns, supplies, standards, sample prep, vials, filters. Products: ZORBAX, Poroshell, InfinityLab, Eclipse, Bond Elut. Include product name verbatim in query if mentioned.",
         "pineconeIndex": {
           "__rl": true,
           "value": "agilent-support-agent",
@@ -241,7 +241,7 @@
           "values": [
             {
               "role": "system",
-              "content": "You are a strict evaluator for an Agilent technical-support RAG agent. You are given a user QUERY, the agent's ANSWER, and a rubric (EXPECTED_BEHAVIOR, EXPECTED_NAMESPACE). Grade how well the answer satisfies the rubric.\n\nVERDICT rules:\n- PASS: answer fully satisfies expected_behavior. For Out-of-KB rows (expected_namespace = none), PASS means the answer returns the KB-fallback message and does NOT invent facts.\n- PARTIAL: answer is on-topic and partially satisfies the rubric but is incomplete, missing synthesis across sources, missing a citation, or only partially routed.\n- FAIL: answer is wrong, hallucinated, off-topic, or (for Out-of-KB) fabricates an answer instead of returning the fallback.\n\nReturn ONLY valid JSON, no prose, no markdown fences:\n{\"verdict\":\"PASS|PARTIAL|FAIL\",\"namespace_ok\":true|false,\"reason\":\"one sentence\"}"
+              "content": "You are a strict evaluator for a technical-support RAG agent. You are given a user QUERY, the agent's ANSWER, and a rubric (EXPECTED_BEHAVIOR, EXPECTED_NAMESPACE). Grade how well the answer satisfies the rubric.\n\nVERDICT rules:\n- PASS: answer fully satisfies expected_behavior. For Out-of-KB rows (expected_namespace = none), PASS means the answer returns the KB-fallback message and does NOT invent facts.\n- PARTIAL: answer is on-topic and partially satisfies the rubric but is incomplete, missing synthesis across sources, missing a citation, or only partially routed.\n- FAIL: answer is wrong, hallucinated, off-topic, or (for Out-of-KB) fabricates an answer instead of returning the fallback.\n\nReturn ONLY valid JSON, no prose, no markdown fences:\n{\"verdict\":\"PASS|PARTIAL|FAIL\",\"namespace_ok\":true|false,\"reason\":\"one sentence\"}"
             },
             {
               "content": "=QUERY:\n{{ $json.Query }}\n\nEXPECTED_NAMESPACE: {{ $json.Expected_namespace }}\nEXPECTED_BEHAVIOR: {{ $json.Expected_behavior }}\n\nAGENT ANSWER:\n{{ $json.output }}"

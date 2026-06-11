@@ -1,12 +1,12 @@
-# Support RAG Agent
+# LabSupport Agent
 
-An n8n-based Retrieval-Augmented Generation (RAG) chatbot that helps customer support representatives answer technical questions about Agilent LC/HPLC, GC instruments, and consumables — grounded in Agilent's official Community Wiki knowledge base, with a built-in LLM-as-judge evaluation harness.
+An n8n-based Retrieval-Augmented Generation (RAG) chatbot that helps customer support representatives at a medical device company answer technical questions about LC/HPLC, GC instruments, and lab consumables — grounded in a vendor support knowledge base, with a built-in LLM-as-judge evaluation harness.
 
 ## Architecture
 
 ### 1. Knowledge Base Ingestion Pipeline
 
-Crawls the Agilent Community Wiki, chunks the content, and upserts embeddings into Pinecone.
+Crawls the vendor support knowledge base, chunks the content, and upserts embeddings into Pinecone.
 
 ```mermaid
 flowchart LR
@@ -53,7 +53,7 @@ flowchart TD
 
 Source: [`workflows/AIAgentFinal(1).json`](workflows/AIAgentFinal%281%29.json)
 
-The agent's system prompt routes queries to the right namespace (LC/HPLC → `lc`, GC → `gc`, columns/consumables → `consumables`, unsure → search all three), always cites `Source: [title] — [source_url]`, and falls back to "I could not find that in the Agilent knowledge base..." when nothing relevant is retrieved.
+The agent's system prompt routes queries to the right namespace (LC/HPLC → `lc`, GC → `gc`, columns/consumables → `consumables`, unsure → search all three), always cites `Source: [title] — [source_url]`, and falls back to "I could not find that in the support knowledge base..." when nothing relevant is retrieved.
 
 ## Evaluation
 
@@ -94,7 +94,7 @@ Namespace routing accuracy (`namespace_ok`): **14/15 (93.3%)**
 - The agent is strong on grounded retrieval: Standard, Cross-doc, and Out-of-KB categories all scored 100% — it correctly synthesizes across LC/GC/consumables namespaces and never fabricates answers when the knowledge base has no coverage.
 - **Ambiguous queries are the weak spot (50%)**: for under-specified questions (e.g. "How do I fix flow problems?", "What is the best column for my application?"), the agent answers broadly across all namespaces instead of asking a clarifying question, as the rubric expected.
 - One Instrument# query (7890B inlet troubleshooting) scored PARTIAL — the agent returned a general resource link rather than specific troubleshooting steps.
-- One Out-of-KB query (Agilent's consumables return policy) correctly returned the fallback message (PASS) but was flagged `namespace_ok=FALSE` by the judge.
+- One Out-of-KB query (the consumables return policy) correctly returned the fallback message (PASS) but was flagged `namespace_ok=FALSE` by the judge.
 
 Full per-query queries, expected behavior, agent answers, and judge reasoning are in [`eval/Evaldataset-week2.xlsx`](eval/Evaldataset-week2.xlsx).
 
@@ -116,7 +116,7 @@ Full per-query queries, expected behavior, agent answers, and judge reasoning ar
 ## Project structure
 
 ```
-support-rag-agent/
+labsupport-agent/
 ├── workflows/
 │   ├── Support Ingestion Final(1).json   # Knowledge base ingestion pipeline
 │   └── AIAgentFinal(1).json               # Support chat agent + evaluation pipeline

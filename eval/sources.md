@@ -1,8 +1,8 @@
 # Knowledge Base Source URLs
 
-These are the Agilent Community Wiki pages crawled by the **Support Ingestion**
-workflow to populate the Pinecone index used in evaluation. Each URL maps to
-its own Pinecone namespace.
+These are the vendor support knowledge base pages crawled by the **Support
+Ingestion** workflow to populate the Pinecone index used in evaluation. Each
+URL maps to its own Pinecone namespace.
 
 | Namespace     | Instrument            | Source URL |
 |---------------|-----------------------|------------|
